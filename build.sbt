@@ -1,7 +1,8 @@
 val Http4sVersion = "0.20.8"
+val CirceVersion = "0.11.1"
 val ScalaTestVersion = "3.0.8"
 val ScalaCheckVersion = "1.14.0"
-val CirceVersion = "0.11.1"
+val ScalaMockVersion = "4.4.0"
 
 lazy val root = (project in file("."))
   .configs(IntegrationTest)
@@ -20,7 +21,8 @@ lazy val root = (project in file("."))
     ),
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % ScalaTestVersion,
-      "org.scalacheck" %% "scalacheck" % ScalaCheckVersion
+      "org.scalacheck" %% "scalacheck" % ScalaCheckVersion,
+      "org.scalamock" %% "scalamock" % ScalaMockVersion
     ).map(_ % "it,test"),
     addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),

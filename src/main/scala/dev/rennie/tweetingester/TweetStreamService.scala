@@ -2,25 +2,26 @@ package dev.rennie.tweetingester
 
 import cats.effect.{ConcurrentEffect, ContextShift}
 import io.circe.Json
-import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.{Method, Request, Response, Uri}
-import org.http4s.client.oauth1
+import org.http4s.client.{oauth1, Client}
+import fs2.Stream
 import jawnfs2._
 import org.typelevel.jawn.RawFacade
 import io.circe.jawn.CirceSupportParser
-import Tweet.decodeTweet
+import Tweet.tweetDecoder
 
 import scala.concurrent.ExecutionContext
 
 class TweetStreamService[F[_]](
     twitterEndpoint: Uri,
-    clientBuilder: BlazeClientBuilder[F],
+    clientBuilder: StreamingClientBuilder[F],
     creds: TwitterApiCredentials
 )(implicit ec: ExecutionContext, F: ConcurrentEffect[F], cs: ContextShift[F]) {
 
   implicit val circeFacade: RawFacade[Json] = CirceSupportParser.facade
 
-  def stream(): fs2.Stream[F, Tweet] = {
+  /** Connects to the Twitter endpoint and returns a stream of parsed [[Tweet]]s */
+  def stream(): Stream[F, Tweet] = {
     val req = Request[F](Method.GET, twitterEndpoint)
     parseTweets(createTwitterStream(req)(creds))
   }
@@ -29,27 +30,25 @@ class TweetStreamService[F[_]](
     *
     * Malformed JSON elements which cannot be parsed are ignored.
     */
-  def parseTweets(
-      twitterStream: fs2.Stream[F, Response[F]]
-  ): fs2.Stream[F, Tweet] =
+  def parseTweets(twitterStream: Stream[F, Response[F]]): Stream[F, Tweet] =
     for {
       resp <- twitterStream
       tweetJson <- resp.body.chunks.parseJsonStream
       tweet <- tweetJson.as[Tweet] match {
-        case Left(_)  => fs2.Stream.empty // TODO: log parse failures
-        case Right(t) => fs2.Stream.emit(t)
+        case Left(_)  => Stream.empty // TODO: log parse failures
+        case Right(t) => Stream.emit(t)
       }
     } yield tweet
 
   /** Obtains a streamed response using the input request and credentials. */
   def createTwitterStream(
       req: Request[F]
-  )(creds: TwitterApiCredentials): fs2.Stream[F, Response[F]] =
+  )(creds: TwitterApiCredentials): Stream[F, Response[F]] =
     for {
-      client <- clientBuilder.stream
-      signedRequest <- fs2.Stream.eval(sign(req)(creds))
+      client: Client[F] <- clientBuilder.streamClient
+      signedRequest: Request[F] <- Stream.eval(sign(req)(creds))
       // TODO: response error handling / retry logic
-      response <- client.stream(signedRequest)
+      response: Response[F] <- client.stream(signedRequest)
     } yield response
 
   /** Signs the request with the input credentials.
