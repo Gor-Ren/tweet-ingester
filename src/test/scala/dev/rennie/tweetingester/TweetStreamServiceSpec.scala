@@ -1,9 +1,15 @@
 package dev.rennie.tweetingester
 
 import cats.effect.{ContextShift, IO}
+import dev.rennie.tweetingester.mock.{
+  CrlfDelimitedJsonEncoderInstances,
+  MockTwitterClient
+}
+import fs2.Stream
+import org.http4s.circe._
 import org.http4s.Credentials.AuthParams
 import org.http4s.headers.Authorization
-import org.http4s.{Request, Uri}
+import org.http4s.{EntityEncoder, Request, Uri}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{FunSpec, Matchers}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
@@ -18,6 +24,8 @@ class TweetStreamServiceSpec
 
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+  implicit val twitterEncoder: EntityEncoder[IO, Stream[IO, Seq[Tweet]]] =
+    CrlfDelimitedJsonEncoderInstances.tweetDelimitedJsonEncoder[IO]
 
   val testCreds = TwitterApiCredentials("abc1", "def2", "ghi3", "klm4")
   val testReq: Request[IO] = Request[IO](uri = Uri.uri("/test/"))
@@ -33,7 +41,7 @@ class TweetStreamServiceSpec
       (mockClientBuilder.streamClient _)
         .expects()
         .returns(
-          MockClient[IO].returnsOkWith(Seq.empty)
+          MockTwitterClient[IO].returnsOkWith(Seq.empty)
         )
 
       val result = service.stream().compile.toVector.unsafeRunSync()
@@ -45,7 +53,7 @@ class TweetStreamServiceSpec
       (mockClientBuilder.streamClient _)
         .expects()
         .returns(
-          MockClient[IO].returnsOkWith(expected)
+          MockTwitterClient[IO].returnsOkWith(expected)
         )
 
       val result = service.stream().compile.toVector.unsafeRunSync()
