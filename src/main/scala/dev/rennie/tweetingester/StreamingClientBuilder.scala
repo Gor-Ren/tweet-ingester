@@ -6,7 +6,7 @@ import org.http4s.client.blaze.BlazeClientBuilder
 
 /** Builders which produce a singleton stream containing a [[Client]].
   *
-  * Used to hide [[BlazeClientBuilder]] behind a generic trait which can be
+  * Used to hide [[BlazeClientBuilder]] behind a generic trait so it can be
   * mocked in testing.
   */
 trait StreamingClientBuilder[F[_]] {

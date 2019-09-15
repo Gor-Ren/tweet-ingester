@@ -9,6 +9,7 @@ import jawnfs2._
 import org.typelevel.jawn.RawFacade
 import io.circe.jawn.CirceSupportParser
 import Tweet.tweetDecoder
+import io.circe.fs2.decoder
 
 import scala.concurrent.ExecutionContext
 
@@ -20,25 +21,24 @@ class TweetStreamService[F[_]](
 
   implicit val circeFacade: RawFacade[Json] = CirceSupportParser.facade
 
-  /** Connects to the Twitter endpoint and returns a stream of parsed [[Tweet]]s */
-  def stream(): Stream[F, Tweet] = {
-    val req = Request[F](Method.GET, twitterEndpoint)
-    parseTweets(createTwitterStream(req)(creds))
-  }
-
-  /** Transforms the input stream response to a stream of [[Tweet]].
+  /** Connects to the Twitter endpoint and returns stream of parsed [[Tweet]]s.
     *
-    * Malformed JSON elements which cannot be parsed are ignored.
+    * Elements which cannot be parsed to a [[Tweet]] are ignored.
     */
-  def parseTweets(twitterStream: Stream[F, Response[F]]): Stream[F, Tweet] =
+  def stream(): Stream[F, Tweet] = {
+    val request = Request[F](Method.GET, twitterEndpoint)
+    val response = createTwitterStream(request)(creds)
     for {
-      resp <- twitterStream
-      tweetJson <- resp.body.chunks.parseJsonStream
-      tweet <- tweetJson.as[Tweet] match {
-        case Left(_)  => Stream.empty // TODO: log parse failures
-        case Right(t) => Stream.emit(t)
-      }
-    } yield tweet
+      r <- response
+      tweets <- r.body.chunks
+        .through(parseJsonStream)
+        .through(decoder[F, Tweet])
+        .handleErrorWith(t => {
+          println(s"Error: $t") // TODO: log errors, make pure
+          Stream.empty
+        })
+    } yield tweets
+  }
 
   /** Obtains a streamed response using the input request and credentials. */
   def createTwitterStream(

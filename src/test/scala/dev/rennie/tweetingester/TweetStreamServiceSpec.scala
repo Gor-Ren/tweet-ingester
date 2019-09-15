@@ -16,7 +16,7 @@ import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import scala.concurrent.ExecutionContext
 
-class TweetStreamServiceSpec
+final class TweetStreamServiceSpec
     extends FunSpec
     with Matchers
     with MockFactory
@@ -28,7 +28,6 @@ class TweetStreamServiceSpec
     CrlfDelimitedJsonEncoderInstances.tweetDelimitedJsonEncoder[IO]
 
   val testCreds = TwitterApiCredentials("abc1", "def2", "ghi3", "klm4")
-  val testReq: Request[IO] = Request[IO](uri = Uri.uri("/test/"))
 
   val mockClientBuilder: StreamingClientBuilder[IO] =
     mock[StreamingClientBuilder[IO]]
@@ -36,7 +35,7 @@ class TweetStreamServiceSpec
   val service =
     new TweetStreamService[IO](Uri.uri("/test/"), mockClientBuilder, testCreds)
 
-  describe("TweetIngester#createTwitterStream") {
+  describe("TweetIngester#stream") {
     it("should return an empty stream if there are no tweets") {
       (mockClientBuilder.streamClient _)
         .expects()
@@ -48,7 +47,7 @@ class TweetStreamServiceSpec
       result shouldBe empty
     }
 
-    it("should return tweets received in the response") {
+    it("should return a single tweet received in the response") {
       val expected = Seq(Tweet(1L, "hello world"))
       (mockClientBuilder.streamClient _)
         .expects()
@@ -59,9 +58,24 @@ class TweetStreamServiceSpec
       val result = service.stream().compile.toVector.unsafeRunSync()
       result should contain allElementsOf expected
     }
+
+    it("should return multiple tweets received in the response") {
+      val expected = Seq(Tweet(1L, "test1"), Tweet(2L, "test2"))
+      (mockClientBuilder.streamClient _)
+        .expects()
+        .returns(
+          MockTwitterClient[IO].returnsOkWith(expected)
+        )
+
+      val result = service.stream().compile.toVector.unsafeRunSync()
+      result should contain allElementsOf expected
+    }
+    // TODO: add Seq[Tweet] generator and used property-based test
   }
 
   describe("TweetIngester#sign") {
+    val testReq: Request[IO] = Request[IO](uri = Uri.uri("/test/"))
+
     it("should add OAuth headers to the request") {
       assume(testReq.headers.get(Authorization).isEmpty)
       val headers = service.sign(testReq)(testCreds).unsafeRunSync().headers

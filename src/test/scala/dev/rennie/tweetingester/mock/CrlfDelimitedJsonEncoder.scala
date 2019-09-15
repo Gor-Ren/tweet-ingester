@@ -19,7 +19,7 @@ import org.http4s.{
 
 /** Encodes sequences of objects as CRLF-delimited JSON value streams.
   *
-  * Given a streamed sequence of objects, `O`, encodes each `O` as a JSON object
+  * Given a streamed sequence of objects `O`, encodes each `O` as a JSON object
   * separated by `\r\n` (CRLF). The JSON objects may contain newlines, `\n`, but
   * not the CRLF sequence.
   */
@@ -32,8 +32,12 @@ class CrlfDelimitedJsonEncoder[F[_], O](
   private val delimiterBody: EntityBody[F] =
     Stream.emits(delimiter.getBytes(StandardCharsets.UTF_8))
 
-  override def toEntity(as: Stream[F, Seq[O]]): Entity[F] = Entity(
-    as.flatMap(a => entityEncoder.toEntity(a.asJson).body ++ delimiterBody)
+  override def toEntity(stream: Stream[F, Seq[O]]): Entity[F] = Entity(
+    for {
+      els <- stream
+      el <- Stream.emits(els)
+      delimited <- entityEncoder.toEntity(el.asJson).body ++ delimiterBody
+    } yield delimited
   )
 
   override def headers: Headers = Headers.of(

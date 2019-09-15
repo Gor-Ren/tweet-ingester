@@ -1,5 +1,6 @@
-val Http4sVersion = "0.20.8"
+val Http4sVersion = "0.20.10"
 val CirceVersion = "0.11.1"
+val CirceFs2Version = "0.11.0"
 val ScalaTestVersion = "3.0.8"
 val ScalaCheckVersion = "1.14.0"
 val ScalaMockVersion = "4.4.0"
@@ -17,7 +18,8 @@ lazy val root = (project in file("."))
       "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
       "org.http4s" %% "http4s-circe" % Http4sVersion,
       "org.http4s" %% "http4s-dsl" % Http4sVersion,
-      "io.circe" %% "circe-generic" % CirceVersion
+      "io.circe" %% "circe-generic" % CirceVersion,
+      "io.circe" %% "circe-fs2" % CirceFs2Version
     ),
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % ScalaTestVersion,
