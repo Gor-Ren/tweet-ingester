@@ -1,24 +1,34 @@
 package dev.rennie.tweetingester
 
-import org.scalatest.{FunSpec, Matchers}
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import org.scalacheck.{Arbitrary, Gen}
 
 final class TwitterApiCredentialsSpec extends BaseTestSpec {
 
+  val credGen: Gen[TwitterApiCredentials] = for {
+    consumerKey <- Gen.asciiPrintableStr
+    consumerSecret <- Gen.asciiPrintableStr
+    tokenValue <- Gen.asciiPrintableStr
+    tokenSecret <- Gen.asciiPrintableStr
+  } yield TwitterApiCredentials(consumerKey,
+                                consumerSecret,
+                                tokenValue,
+                                tokenSecret)
+
+  implicit val credArbitrary: Arbitrary[TwitterApiCredentials] =
+    Arbitrary(credGen)
+
   describe("Twitter API Credentials") {
     it("should return the correct consumer credentials") {
-      forAll { (cKey: String, cSecret: String, x: String, y: String) =>
-        val creds = TwitterApiCredentials(cKey, cSecret, x, y)
-        creds.oauthConsumer.key shouldBe cKey
-        creds.oauthConsumer.secret shouldBe cSecret
+      forAll { creds: TwitterApiCredentials =>
+        creds.oauthConsumer.key shouldBe creds.consumerKey
+        creds.oauthConsumer.secret shouldBe creds.consumerSecret
       }
     }
 
     it("should return the correct token credentials") {
-      forAll { (x: String, y: String, tValue: String, tSecret: String) =>
-        val creds = TwitterApiCredentials(x, y, tValue, tSecret)
-        creds.oauthToken.value shouldBe tValue
-        creds.oauthToken.secret shouldBe tSecret
+      forAll { creds: TwitterApiCredentials =>
+        creds.oauthToken.value shouldBe creds.accessToken
+        creds.oauthToken.secret shouldBe creds.accessSecret
       }
     }
   }
