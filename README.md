@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/Gor-Ren/tweet-ingester/tree/master.svg?style=svg)](https://circleci.com/gh/Gor-Ren/tweet-ingester/tree/master)
+[![CircleCI](https://circleci.com/gh/Gor-Ren/tweet-ingester/tree/master.svg?style=shield)](https://circleci.com/gh/Gor-Ren/tweet-ingester/tree/master)
 [![codecov](https://codecov.io/gh/Gor-Ren/tweet-ingester/branch/master/graph/badge.svg)](https://codecov.io/gh/Gor-Ren/tweet-ingester)
 
 # Tweet-Ingester
