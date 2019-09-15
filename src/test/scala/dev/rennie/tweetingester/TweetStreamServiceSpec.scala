@@ -10,22 +10,19 @@ import org.http4s.circe._
 import org.http4s.Credentials.AuthParams
 import org.http4s.headers.Authorization
 import org.http4s.{EntityEncoder, Request, Uri}
+import org.scalacheck.Arbitrary
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{FunSpec, Matchers}
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import org.scalacheck.Arbitrary._
 
 import scala.concurrent.ExecutionContext
 
-final class TweetStreamServiceSpec
-    extends FunSpec
-    with Matchers
-    with MockFactory
-    with ScalaCheckPropertyChecks {
+final class TweetStreamServiceSpec extends BaseTestSpec with MockFactory {
 
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
   implicit val twitterEncoder: EntityEncoder[IO, Stream[IO, Seq[Tweet]]] =
     CrlfDelimitedJsonEncoderInstances.tweetDelimitedJsonEncoder[IO]
+  implicit val tweetArbitrary: Arbitrary[Tweet] = Arbitrary(tweetGen)
 
   val testCreds = TwitterApiCredentials("abc1", "def2", "ghi3", "klm4")
 
@@ -36,41 +33,18 @@ final class TweetStreamServiceSpec
     new TweetStreamService[IO](Uri.uri("/test/"), mockClientBuilder, testCreds)
 
   describe("TweetIngester#stream") {
-    it("should return an empty stream if there are no tweets") {
-      (mockClientBuilder.streamClient _)
-        .expects()
-        .returns(
-          MockTwitterClient[IO].returnsOkWith(Seq.empty)
-        )
+    it("should return tweets received in the response") {
+      forAll { ts: Seq[Tweet] =>
+        (mockClientBuilder.streamClient _)
+          .expects()
+          .returns(
+            MockTwitterClient[IO].returnsOkWith(ts)
+          )
 
-      val result = service.stream().compile.toVector.unsafeRunSync()
-      result shouldBe empty
+        val result = service.stream().compile.toVector.unsafeRunSync()
+        result should contain allElementsOf ts
+      }
     }
-
-    it("should return a single tweet received in the response") {
-      val expected = Seq(Tweet(1L, "hello world"))
-      (mockClientBuilder.streamClient _)
-        .expects()
-        .returns(
-          MockTwitterClient[IO].returnsOkWith(expected)
-        )
-
-      val result = service.stream().compile.toVector.unsafeRunSync()
-      result should contain allElementsOf expected
-    }
-
-    it("should return multiple tweets received in the response") {
-      val expected = Seq(Tweet(1L, "test1"), Tweet(2L, "test2"))
-      (mockClientBuilder.streamClient _)
-        .expects()
-        .returns(
-          MockTwitterClient[IO].returnsOkWith(expected)
-        )
-
-      val result = service.stream().compile.toVector.unsafeRunSync()
-      result should contain allElementsOf expected
-    }
-    // TODO: add Seq[Tweet] generator and used property-based test
   }
 
   describe("TweetIngester#sign") {

@@ -3,10 +3,7 @@ package dev.rennie.tweetingester
 import org.scalatest.{FunSpec, Matchers}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-final class TwitterApiCredentialsSpec
-    extends FunSpec
-    with Matchers
-    with ScalaCheckPropertyChecks {
+final class TwitterApiCredentialsSpec extends BaseTestSpec {
 
   describe("Twitter API Credentials") {
     it("should return the correct consumer credentials") {

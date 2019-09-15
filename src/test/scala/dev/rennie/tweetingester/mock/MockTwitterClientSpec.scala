@@ -1,14 +1,16 @@
 package dev.rennie.tweetingester.mock
 
 import cats.effect.IO
-import dev.rennie.tweetingester.Tweet
-import org.scalatest.{FunSpec, Matchers}
+import dev.rennie.tweetingester.{BaseTestSpec, Tweet}
 import dev.rennie.tweetingester.mock.CrlfDelimitedJsonEncoderInstances.tweetDelimitedJsonEncoder
 import org.http4s.Request
 import org.http4s.circe._
 import io.circe.syntax._
+import org.scalacheck.Arbitrary
+import org.scalacheck.Arbitrary._
 
-final class MockTwitterClientSpec extends FunSpec with Matchers {
+final class MockTwitterClientSpec extends BaseTestSpec {
+  implicit val tweetArbitrary: Arbitrary[Tweet] = Arbitrary(tweetGen)
   val client = new MockTwitterClient[IO](tweetDelimitedJsonEncoder[IO])
 
   describe("MockTwitterClient#returnsOkWith") {
@@ -24,17 +26,18 @@ final class MockTwitterClientSpec extends FunSpec with Matchers {
     }
 
     it("should respond with tweets as JSON separated by CRLF") {
-      val tweets = Seq(Tweet(1, "1"), Tweet(2, "2"))
-      val c =
-        client.returnsOkWith(tweets).compile.toList.unsafeRunSync().head
-      val body = c
-        .fetch(Request[IO]())(resp => resp.bodyAsText.compile.string)
-        .unsafeRunSync()
+      forAll { ts: Seq[Tweet] =>
+        val c =
+          client.returnsOkWith(ts).compile.toList.unsafeRunSync().head
+        val body = c
+          .fetch(Request[IO]())(resp => resp.bodyAsText.compile.string)
+          .unsafeRunSync()
 
-      val expected =
-        tweets.foldLeft("")((res, el) => res ++ el.asJson.noSpaces ++ "\r\n")
+        val expected =
+          ts.foldLeft("")((res, el) => res ++ el.asJson.noSpaces ++ "\r\n")
 
-      body should equal(expected)
+        body should equal(expected)
+      }
     }
   }
 }
