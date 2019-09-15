@@ -10,7 +10,7 @@ lazy val root = (project in file("."))
   .settings(
     organization := "dev.rennie",
     name := "tweet-ingester",
-    version := "0.1-SNAPSHOT",
+    version := "0.2-SNAPSHOT",
     scalaVersion := "2.12.8",
     resolvers in ThisBuild += "Artima Maven Repository" at "https://repo.artima.com/releases",
     libraryDependencies ++= Seq(
