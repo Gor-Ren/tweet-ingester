@@ -24,13 +24,16 @@ final class TweetStreamServiceSpec extends BaseTestSpec with MockFactory {
     CrlfDelimitedJsonEncoderInstances.tweetDelimitedJsonEncoder[IO]
   implicit val tweetArbitrary: Arbitrary[Tweet] = Arbitrary(tweetGen)
 
-  val testCreds = TwitterApiCredentials("abc1", "def2", "ghi3", "klm4")
+  val testConfig = TwitterConfig(
+    "/test/",
+    TwitterApiCredentials("abc1", "def2", "ghi3", "klm4")
+  )
 
   val mockClientBuilder: StreamingClientBuilder[IO] =
     mock[StreamingClientBuilder[IO]]
 
   val service =
-    new TweetStreamService[IO](Uri.uri("/test/"), mockClientBuilder, testCreds)
+    new TweetStreamService[IO](testConfig, mockClientBuilder)
 
   describe("TweetIngester#stream") {
     it("should return tweets received in the response") {
@@ -52,12 +55,14 @@ final class TweetStreamServiceSpec extends BaseTestSpec with MockFactory {
 
     it("should add OAuth headers to the request") {
       assume(testReq.headers.get(Authorization).isEmpty)
-      val headers = service.sign(testReq)(testCreds).unsafeRunSync().headers
+      val headers =
+        service.sign(testReq)(testConfig.credentials).unsafeRunSync().headers
       headers.get(Authorization) shouldBe defined
     }
 
     it("should add the correct consumer key and token to the headers") {
-      val headers = service.sign(testReq)(testCreds).unsafeRunSync().headers
+      val headers =
+        service.sign(testReq)(testConfig.credentials).unsafeRunSync().headers
       val authParams = headers
         .get(Authorization)
         .get
@@ -66,8 +71,8 @@ final class TweetStreamServiceSpec extends BaseTestSpec with MockFactory {
         .params
 
       authParams.toList should contain allOf (
-        ("oauth_consumer_key", testCreds.consumerKey),
-        ("oauth_token", testCreds.accessToken)
+        ("oauth_consumer_key", testConfig.credentials.consumerKey),
+        ("oauth_token", testConfig.credentials.accessToken)
       )
     }
   }

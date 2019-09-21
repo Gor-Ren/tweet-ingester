@@ -14,9 +14,8 @@ import io.circe.fs2.decoder
 import scala.concurrent.ExecutionContext
 
 class TweetStreamService[F[_]](
-    twitterEndpoint: Uri,
-    clientBuilder: StreamingClientBuilder[F],
-    creds: TwitterApiCredentials
+    config: TwitterConfig,
+    clientBuilder: StreamingClientBuilder[F]
 )(implicit ec: ExecutionContext, F: ConcurrentEffect[F], cs: ContextShift[F]) {
 
   implicit val circeFacade: RawFacade[Json] = CirceSupportParser.facade
@@ -26,21 +25,26 @@ class TweetStreamService[F[_]](
     * Elements which cannot be parsed to a [[Tweet]] are ignored.
     */
   def stream(): Stream[F, Tweet] = {
-    val request = Request[F](Method.GET, twitterEndpoint)
-    val response = createTwitterStream(request)(creds)
+    val request = Request[F](Method.GET, config.endpointUri)
+    val response = createTwitterStream(request)(config.credentials)
     for {
       r <- response
-      tweets <- r.body.chunks
+      tweet <- r.body.chunks
         .through(parseJsonStream)
         .through(decoder[F, Tweet])
         .handleErrorWith(t => {
           println(s"Error: $t") // TODO: log errors, make pure
           Stream.empty
         })
-    } yield tweets
+    } yield tweet
   }
 
-  /** Obtains a streamed response using the input request and credentials. */
+  /** Executes the input request and returns the streamed response.
+    *
+    * @param req the request to be sent
+    * @param creds the API credentials to sign the request with
+    * @return the response wrapped in a stream
+    */
   def createTwitterStream(
       req: Request[F]
   )(creds: TwitterApiCredentials): Stream[F, Response[F]] =
@@ -54,11 +58,11 @@ class TweetStreamService[F[_]](
   /** Signs the request with the input credentials.
     *
     * The returned request is wrapped in an effect due to the creation of a
-    * nonce during OAuth signing.
+    * nonce with the system clock during OAuth signing.
     *
     * @param req the request to be signed
     * @param creds Twitter API credentials to use for signing
-    * @return
+    * @return the signed request wrapped in an effect
     */
   def sign(req: Request[F])(creds: TwitterApiCredentials): F[Request[F]] = {
     oauth1.signRequest(req,

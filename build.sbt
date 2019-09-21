@@ -4,6 +4,7 @@ val CirceFs2Version = "0.12.0"
 val ScalaTestVersion = "3.0.8"
 val ScalaCheckVersion = "1.14.0"
 val ScalaMockVersion = "4.4.0"
+val PureConfigVersion = "0.12.0"
 
 lazy val root = (project in file("."))
   .configs(IntegrationTest)
@@ -19,7 +20,8 @@ lazy val root = (project in file("."))
       "org.http4s" %% "http4s-blaze-server" % Http4sVersion,
       "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
       "io.circe" %% "circe-generic" % CirceVersion,
-      "io.circe" %% "circe-fs2" % CirceFs2Version
+      "io.circe" %% "circe-fs2" % CirceFs2Version,
+      "com.github.pureconfig" %% "pureconfig" % PureConfigVersion
     ),
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % ScalaTestVersion,
@@ -30,6 +32,8 @@ lazy val root = (project in file("."))
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
     Defaults.itSettings
   )
+
+unmanagedResourceDirectories in Test += baseDirectory.value / "test" / "resources"
 
 scalacOptions ++= Seq(
   "-deprecation",
