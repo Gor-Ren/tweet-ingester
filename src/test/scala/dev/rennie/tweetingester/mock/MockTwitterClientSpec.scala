@@ -9,6 +9,7 @@ import io.circe.syntax._
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary._
 
+/** Tests that the mock client provides the expected behaviour. */
 final class MockTwitterClientSpec extends BaseTestSpec {
   implicit val tweetArbitrary: Arbitrary[Tweet] = Arbitrary(tweetGen)
   val client = new MockTwitterClient[IO](tweetDelimitedJsonEncoder[IO])
@@ -34,7 +35,7 @@ final class MockTwitterClientSpec extends BaseTestSpec {
           .unsafeRunSync()
 
         val expected =
-          ts.foldLeft("")((res, el) => res ++ el.asJson.noSpaces ++ "\r\n")
+          ts.foldLeft("")((res, el) => res ++ el.asJson.spaces4 ++ "\r\n")
 
         body should equal(expected)
       }
