@@ -1,6 +1,6 @@
 package dev.rennie.tweetingester
 
-import cats.effect.{ContextShift, IO}
+import cats.effect.{ContextShift, IO, Sync}
 import dev.rennie.tweetingester.mock.{
   CrlfDelimitedJsonEncoderInstances,
   MockTwitterClient
@@ -42,6 +42,23 @@ final class TweetStreamServiceSpec extends BaseTestSpec with MockFactory {
           .expects()
           .returns(
             MockTwitterClient[IO].returnsOkWith(ts)
+          )
+
+        val result = service.stream().compile.toVector.unsafeRunSync()
+        result should contain allElementsOf ts
+      }
+    }
+
+    it("should return tweets interspersed with keep-alive signals") {
+      forAll { ts: Seq[Tweet] =>
+        val keepAliveEncoder: EntityEncoder[IO, Stream[IO, Seq[Tweet]]] =
+          CrlfDelimitedJsonEncoderInstances.tweetDelimitedKeepAliveJsonEncoder
+
+        (mockClientBuilder.streamClient _)
+          .expects()
+          .returns(
+            MockTwitterClient[IO]()(Sync[IO], keepAliveEncoder)
+              .returnsOkWith(ts)
           )
 
         val result = service.stream().compile.toVector.unsafeRunSync()

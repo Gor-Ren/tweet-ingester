@@ -26,6 +26,7 @@ class MockTwitterClient[F[_]](val enc: EntityEncoder[F, Stream[F, Seq[Tweet]]])(
 }
 
 object MockTwitterClient {
+  // TODO: provide constructors with keep-alive flag that import relevant encoder
 
   /** Summons a [[MockTwitterClient]] for effect type `F`. */
   def apply[F[_]]()(implicit F: Sync[F],

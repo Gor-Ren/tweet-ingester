@@ -24,14 +24,21 @@ import org.http4s.{
   * Given a streamed sequence of objects `O`, encodes each `O` as a JSON object
   * separated by `\r\n` (CRLF). The JSON objects may contain newlines, `\n`, but
   * not the CRLF sequence.
+  *
+  * Optionally, `\n` elements may appear between tweets which is used to keep
+  * a connection alive when no tweets are being emitted.
   */
-class CrlfDelimitedJsonEncoder[F[_]: Applicative, O](
+class CrlfDelimitedJsonEncoder[F[_]: Applicative, O](keepAlive: Boolean)(
     implicit jsonEncoder: Encoder[O]
 ) extends EntityEncoder[F, Stream[F, Seq[O]]] {
 
-  private val delimiter: String = "\r\n"
+  /** Delimits tweets present within the response body. */
   private val delimiterBody: EntityBody[F] =
-    Stream.emits(delimiter.getBytes(StandardCharsets.UTF_8))
+    Stream.emits("\r\n".getBytes(StandardCharsets.UTF_8))
+
+  /** May appear between tweets in order to keep the connection alive. */
+  private val keepAliveBody: EntityBody[F] =
+    Stream.emits("\n".getBytes(StandardCharsets.UTF_8))
 
   val jsonEntityEncoder: EntityEncoder[F, Json] = CirceInstances
     .withPrinter(Printer.spaces4) // output with indentation and line feeds
@@ -42,7 +49,10 @@ class CrlfDelimitedJsonEncoder[F[_]: Applicative, O](
     for {
       els <- stream
       el <- Stream.emits(els)
-      delimited <- jsonEntityEncoder.toEntity(el.asJson).body ++ delimiterBody
+      delimiters = if (keepAlive) delimiterBody ++ keepAliveBody
+      else delimiterBody
+
+      delimited <- jsonEntityEncoder.toEntity(el.asJson).body ++ delimiters
     } yield delimited
   )
 
@@ -53,8 +63,19 @@ class CrlfDelimitedJsonEncoder[F[_]: Applicative, O](
 }
 
 object CrlfDelimitedJsonEncoderInstances {
+
+  /** Encodes [[Tweet]]s, delimiting each element with `\r\n`. */
   implicit def tweetDelimitedJsonEncoder[F[_]: Applicative](
       implicit jsonEncoder: Encoder[Tweet]
   ): EntityEncoder[F, Stream[F, Seq[Tweet]]] =
-    new CrlfDelimitedJsonEncoder[F, Tweet]()
+    new CrlfDelimitedJsonEncoder[F, Tweet](false)
+
+  /** Encodes [[Tweet]]s, delimiting each element with `\r\n` and `\n`.
+    *
+    * The `\n` simulates an output used by Twitter to keep a connection alive.
+    */
+  implicit def tweetDelimitedKeepAliveJsonEncoder[F[_]: Applicative](
+      implicit jsonEncoder: Encoder[Tweet]
+  ): EntityEncoder[F, Stream[F, Seq[Tweet]]] =
+    new CrlfDelimitedJsonEncoder[F, Tweet](true)
 }
