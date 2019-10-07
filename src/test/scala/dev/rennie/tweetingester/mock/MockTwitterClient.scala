@@ -27,8 +27,23 @@ class MockTwitterClient[F[_]](val enc: EntityEncoder[F, Stream[F, Seq[Tweet]]])(
 
 object MockTwitterClient {
 
-  /** Summons a [[MockTwitterClient]] for effect type `F`. */
-  def apply[F[_]]()(implicit F: Sync[F],
-                    enc: EntityEncoder[F, Stream[F, Seq[Tweet]]]) =
+  /**
+    * Summons a [[MockTwitterClient]] for effect type `F`.
+    *
+    * @param emitKeepAlive if true, the client emits delimiters `\r\n` and keep
+    *                      alive `\n` chars between tweet elements, else it only
+    *                      emits the delimiters `\r\n`.
+    * @return a client which mocks the Twitter API behaviour
+    */
+  def apply[F[_]](
+      emitKeepAlive: Boolean
+  )(implicit F: Sync[F]): MockTwitterClient[F] = {
+    val enc =
+      if (emitKeepAlive)
+        CrlfDelimitedJsonEncoderInstances.tweetDelimitedKeepAliveJsonEncoder
+      else
+        CrlfDelimitedJsonEncoderInstances.tweetDelimitedJsonEncoder
+
     new MockTwitterClient[F](enc)
+  }
 }

@@ -2,16 +2,16 @@ package dev.rennie.tweetingester.mock
 
 import cats.effect.IO
 import dev.rennie.tweetingester.{BaseTestSpec, Tweet}
-import dev.rennie.tweetingester.mock.CrlfDelimitedJsonEncoderInstances.tweetDelimitedJsonEncoder
 import org.http4s.Request
-import org.http4s.circe._
 import io.circe.syntax._
 import org.scalacheck.Arbitrary
-import org.scalacheck.Arbitrary._
 
+/** Tests that the mock client provides the expected behaviour. */
 final class MockTwitterClientSpec extends BaseTestSpec {
   implicit val tweetArbitrary: Arbitrary[Tweet] = Arbitrary(tweetGen)
-  val client = new MockTwitterClient[IO](tweetDelimitedJsonEncoder[IO])
+
+  val client: MockTwitterClient[IO] =
+    MockTwitterClient[IO](emitKeepAlive = false)
 
   describe("MockTwitterClient#returnsOkWith") {
     it("should return a singleton stream") {
@@ -26,15 +26,42 @@ final class MockTwitterClientSpec extends BaseTestSpec {
     }
 
     it("should respond with tweets as JSON separated by CRLF") {
-      forAll { ts: Seq[Tweet] =>
+      forAll { tweets: Seq[Tweet] =>
         val c =
-          client.returnsOkWith(ts).compile.toList.unsafeRunSync().head
+          client.returnsOkWith(tweets).compile.toList.unsafeRunSync().head
         val body = c
           .fetch(Request[IO]())(resp => resp.bodyAsText.compile.string)
           .unsafeRunSync()
 
         val expected =
-          ts.foldLeft("")((res, el) => res ++ el.asJson.noSpaces ++ "\r\n")
+          tweets.foldLeft("")((res, el) => res ++ el.asJson.spaces4 ++ "\r\n")
+
+        body should equal(expected)
+      }
+    }
+
+    it(
+      "should respond with tweets as JSON separated by CRLF with keep-alive signal"
+    ) {
+      // init a client that encodes with the keep-alive signal
+      val keepAliveClient =
+        MockTwitterClient[IO](emitKeepAlive = true)
+
+      forAll { tweets: Seq[Tweet] =>
+        val c = keepAliveClient
+          .returnsOkWith(tweets)
+          .compile
+          .toList
+          .unsafeRunSync()
+          .head
+        val body = c
+          .fetch(Request[IO]())(resp => resp.bodyAsText.compile.string)
+          .unsafeRunSync()
+
+        val expected =
+          tweets.foldLeft("")(
+            (res, el) => res ++ el.asJson.spaces4 ++ "\r\n" ++ "\n"
+          )
 
         body should equal(expected)
       }
