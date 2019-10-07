@@ -22,7 +22,7 @@ import org.http4s.{
 /** Encodes sequences of objects as CRLF-delimited JSON value streams.
   *
   * Given a streamed sequence of objects `O`, encodes each `O` as a JSON object
-  * separated by `\r\n` (CRLF). The JSON objects may contain newlines, `\n`, but
+  * separated by `\r\n` (CRLF). The JSON objects may contain newlines `\n` but
   * not the CRLF sequence.
   *
   * Optionally, `\n` elements may appear between tweets which is used to keep
@@ -49,8 +49,10 @@ class CrlfDelimitedJsonEncoder[F[_]: Applicative, O](keepAlive: Boolean)(
     for {
       els <- stream
       el <- Stream.emits(els)
-      delimiters = if (keepAlive) delimiterBody ++ keepAliveBody
-      else delimiterBody
+      delimiters = if (keepAlive)
+        delimiterBody ++ keepAliveBody
+      else
+        delimiterBody
 
       delimited <- jsonEntityEncoder.toEntity(el.asJson).body ++ delimiters
     } yield delimited
