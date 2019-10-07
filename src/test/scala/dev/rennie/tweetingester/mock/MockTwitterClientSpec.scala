@@ -2,18 +2,16 @@ package dev.rennie.tweetingester.mock
 
 import cats.effect.IO
 import dev.rennie.tweetingester.{BaseTestSpec, Tweet}
-import dev.rennie.tweetingester.mock.CrlfDelimitedJsonEncoderInstances.tweetDelimitedJsonEncoder
-import dev.rennie.tweetingester.mock.CrlfDelimitedJsonEncoderInstances.tweetDelimitedKeepAliveJsonEncoder
 import org.http4s.Request
-import org.http4s.circe._
 import io.circe.syntax._
 import org.scalacheck.Arbitrary
-import org.scalacheck.Arbitrary._
 
 /** Tests that the mock client provides the expected behaviour. */
 final class MockTwitterClientSpec extends BaseTestSpec {
   implicit val tweetArbitrary: Arbitrary[Tweet] = Arbitrary(tweetGen)
-  val client = new MockTwitterClient[IO](tweetDelimitedJsonEncoder[IO])
+
+  val client: MockTwitterClient[IO] =
+    MockTwitterClient[IO](emitKeepAlive = false)
 
   describe("MockTwitterClient#returnsOkWith") {
     it("should return a singleton stream") {
@@ -47,7 +45,7 @@ final class MockTwitterClientSpec extends BaseTestSpec {
     ) {
       // init a client that encodes with the keep-alive signal
       val keepAliveClient =
-        new MockTwitterClient[IO](tweetDelimitedKeepAliveJsonEncoder[IO])
+        MockTwitterClient[IO](emitKeepAlive = true)
 
       forAll { tweets: Seq[Tweet] =>
         val c = keepAliveClient
