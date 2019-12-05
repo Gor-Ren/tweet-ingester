@@ -13,10 +13,17 @@ import io.circe.fs2.decoder
 
 import scala.concurrent.ExecutionContext
 
+/**
+  * Connects to the Twitter API and produces a stream of parsed [[Tweet]]s.
+  *
+  * @param config the Twitter API details used to connect
+  * @param clientBuilder a builder producing a singleton stream of the HTTP
+  *                      client to be used to communicate with Twitter
+  */
 class TweetStreamService[F[_]](
     config: TwitterConfig,
     clientBuilder: StreamingClientBuilder[F]
-)(implicit ec: ExecutionContext, F: ConcurrentEffect[F], cs: ContextShift[F]) {
+)(implicit ec: ExecutionContext, ce: ConcurrentEffect[F], cs: ContextShift[F]) {
 
   implicit val circeFacade: RawFacade[Json] = CirceSupportParser.facade
 
