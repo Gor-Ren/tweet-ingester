@@ -1,6 +1,6 @@
 package dev.rennie.tweetingester
 
-import cats.effect.{ConcurrentEffect, ContextShift}
+import cats.effect.{ConcurrentEffect, ContextShift, IO}
 import io.circe.Json
 import org.http4s.{Method, Request, Response, Uri}
 import org.http4s.client.{oauth1, Client}
@@ -33,7 +33,7 @@ class TweetStreamService[F[_]](
         .through(parseJsonStream)
         .through(decoder[F, Tweet])
         .handleErrorWith(t => {
-          println(s"Error: $t") // TODO: log errors, make pure
+          Stream.eval(IO(println(s"Error: $t"))) // TODO: log errors
           Stream.empty
         })
     } yield tweet
