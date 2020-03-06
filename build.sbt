@@ -9,6 +9,8 @@ val Http4sVersion = "0.21.1"
 val CirceVersion = "0.13.0"
 val CirceFs2Version = "0.13.0"
 val Fs2KafkaVersion = "1.0.0"
+val RefinedVersion = "0.9.12"
+val NewtypeVersion = "0.4.3"
 val PureConfigVersion = "0.12.0"
 val ScalaTestVersion = "3.0.8"
 val ScalaCheckVersion = "1.14.0"
@@ -35,6 +37,8 @@ lazy val root = (project in file("."))
       "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
       "io.circe" %% "circe-generic" % CirceVersion,
       "io.circe" %% "circe-fs2" % CirceFs2Version,
+      "eu.timepit" %% "refined" % RefinedVersion,
+      "io.estatico" %% "newtype" % NewtypeVersion,
       "com.github.pureconfig" %% "pureconfig" % PureConfigVersion,
       "com.github.fd4s" %% "fs2-kafka" % Fs2KafkaVersion
     ),
@@ -56,15 +60,6 @@ lazy val root = (project in file("."))
 
 unmanagedResourceDirectories in Test += baseDirectory.value / "test" / "resources"
 
-scalacOptions ++= Seq(
-  "-deprecation",
-  "-encoding",
-  "UTF-8",
-  "-language:higherKinds",
-  "-language:postfixOps",
-  "-feature",
-  "-Ymacro-annotations",
-  "-Xfatal-warnings"
-)
+scalacOptions += "-Ymacro-annotations"
 
 scalacOptions in (Compile, doc) += "-no-link-warnings"

@@ -3,7 +3,6 @@ package dev.rennie.tweetingester
 import java.nio.charset.StandardCharsets
 
 import cats.effect.{ExitCode, IO, IOApp}
-import fs2.Stream
 import fs2.kafka.{ProducerSettings, Serializer}
 import io.circe.syntax._
 import javax.naming.ConfigurationException
@@ -29,12 +28,14 @@ object Main extends IOApp {
   }
 
   def startApp(config: Config): IO[Unit] = {
-    val tweetSource: Stream[IO, Tweet] = new TweetStreamService[IO](
+//    val tweetSource: Stream[IO, Tweet] =
+    new TweetStreamService[IO](
       config.twitter,
       BlazeClientBuilder[IO](ec)
     ).stream()
-
-    val kafkaProducerSettings = ProducerSettings(
+//
+//    val kafkaProducerSettings =
+    ProducerSettings(
       keySerializer = Serializer[IO, String],
       valueSerializer = kafkaSerializer
     ).withBootstrapServers(config.kafka.url)

@@ -4,14 +4,12 @@ import cats.Applicative
 import cats.effect.{ConcurrentEffect, ContextShift, Sync}
 import dev.rennie.tweetingester.Tweet.tweetDecoder
 import fs2.Stream
-import io.circe.{Decoder, Json}
 import io.circe.jawn.CirceSupportParser
+import io.circe.{Decoder, Json}
 import jawnfs2._
 import org.http4s.client.{oauth1, Client}
 import org.http4s.{Method, Request, Response}
 import org.typelevel.jawn.Facade
-
-import scala.concurrent.ExecutionContext
 
 /**
   * Connects to the Twitter API and produces a stream of parsed [[Tweet]]s.
@@ -23,7 +21,7 @@ import scala.concurrent.ExecutionContext
 class TweetStreamService[F[_]: ConcurrentEffect: ContextShift: Applicative](
     config: TwitterConfig,
     clientBuilder: StreamingClientBuilder[F]
-)(implicit ec: ExecutionContext) {
+) {
 
   implicit val circeFacade: Facade[Json] = CirceSupportParser.facade
 
@@ -40,11 +38,9 @@ class TweetStreamService[F[_]: ConcurrentEffect: ContextShift: Applicative](
       .map(Decoder[Tweet].decodeJson)
       .flatMap(
         _.fold(failure =>
-                 Stream.empty.covary[F].evalTap { _ =>
-                   Sync[F].delay { // TODO: logging
-                     println(s"Tweet decode error: $failure")
-                   }
-                 },
+                 Stream.eval(Sync[F].delay { // TODO: logging
+                   println(s"Tweet decode error: $failure")
+                 }) >> Stream.empty,
                tweet => Stream.emit(tweet))
       )
   }
