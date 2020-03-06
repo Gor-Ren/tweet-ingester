@@ -2,11 +2,13 @@ import com.typesafe.sbt.packager.docker.DockerChmodType
 
 val appName = "tweet-ingester"
 
-val ScalaVersion = "2.12.10"
-val Http4sVersion = "0.21.0-M5"
-val CirceVersion = "0.12.1"
-val CirceFs2Version = "0.12.0"
-val Fs2KafkaVersion = "0.20.2" // currently building this dep locally
+val ScalaVersion = "2.13.0"
+val CatsVersion = "2.1.0"
+val Fs2Version = "2.2.2"
+val Http4sVersion = "0.21.1"
+val CirceVersion = "0.12.3"
+val CirceFs2Version = "0.13.0"
+val Fs2KafkaVersion = "1.0.0"
 val PureConfigVersion = "0.12.0"
 val ScalaTestVersion = "3.0.8"
 val ScalaCheckVersion = "1.14.0"
@@ -22,6 +24,11 @@ lazy val root = (project in file("."))
     mainClass in Compile := Some("dev.rennie.tweetingester.TweetIngester"),
     resolvers in ThisBuild += "Artima Maven Repository" at "https://repo.artima.com/releases",
     libraryDependencies ++= Seq(
+      compilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
+      compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
+      "org.typelevel" %% "cats-core" % CatsVersion,
+      "org.typelevel" %% "cats-effect" % CatsVersion,
+      "co.fs2" %% "fs2-core" % Fs2Version,
       "org.http4s" %% "http4s-circe" % Http4sVersion,
       "org.http4s" %% "http4s-dsl" % Http4sVersion,
       "org.http4s" %% "http4s-blaze-server" % Http4sVersion,
@@ -29,15 +36,13 @@ lazy val root = (project in file("."))
       "io.circe" %% "circe-generic" % CirceVersion,
       "io.circe" %% "circe-fs2" % CirceFs2Version,
       "com.github.pureconfig" %% "pureconfig" % PureConfigVersion,
-      "com.ovoenergy" %% "fs2-kafka" % Fs2KafkaVersion
+      "com.github.fd4s" %% "fs2-kafka" % Fs2KafkaVersion
     ),
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % ScalaTestVersion,
       "org.scalacheck" %% "scalacheck" % ScalaCheckVersion,
       "org.scalamock" %% "scalamock" % ScalaMockVersion
     ).map(_ % "it,test"),
-    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
-    addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
     Defaults.itSettings
   )
   .enablePlugins(DockerPlugin, JavaAppPackaging)
@@ -58,6 +63,7 @@ scalacOptions ++= Seq(
   "-language:higherKinds",
   "-language:postfixOps",
   "-feature",
+  "-Ymacro-annotations",
   "-Xfatal-warnings"
 )
 

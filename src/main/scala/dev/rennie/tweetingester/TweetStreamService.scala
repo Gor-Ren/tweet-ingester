@@ -9,7 +9,7 @@ import io.circe.jawn.CirceSupportParser
 import jawnfs2._
 import org.http4s.client.{oauth1, Client}
 import org.http4s.{Method, Request, Response}
-import org.typelevel.jawn.RawFacade
+import org.typelevel.jawn.Facade
 
 import scala.concurrent.ExecutionContext
 
@@ -25,7 +25,7 @@ class TweetStreamService[F[_]: ConcurrentEffect: ContextShift: Applicative](
     clientBuilder: StreamingClientBuilder[F]
 )(implicit ec: ExecutionContext) {
 
-  implicit val circeFacade: RawFacade[Json] = CirceSupportParser.facade
+  implicit val circeFacade: Facade[Json] = CirceSupportParser.facade
 
   /** Connects to the Twitter endpoint and returns stream of parsed [[Tweet]]s.
     *

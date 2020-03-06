@@ -45,7 +45,7 @@ object Main extends IOApp {
 
   /** Loads the application config in an effect.
     *
-    * Config resolution will search in the resources directory.
+    * Config resolution will search in the `/resources` directory.
     */
   def loadConfig(): IO[Config] = {
     IO.fromEither[Config](
