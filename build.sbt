@@ -7,7 +7,6 @@ val Http4sVersion = "0.21.0-M5"
 val CirceVersion = "0.12.1"
 val CirceFs2Version = "0.12.0"
 val Fs2KafkaVersion = "0.20.2" // currently building this dep locally
-val KafkaSerializationVersion = "0.5.17"
 val PureConfigVersion = "0.12.0"
 val ScalaTestVersion = "3.0.8"
 val ScalaCheckVersion = "1.14.0"
@@ -21,10 +20,7 @@ lazy val root = (project in file("."))
     version := "0.2-SNAPSHOT",
     scalaVersion := ScalaVersion,
     mainClass in Compile := Some("dev.rennie.tweetingester.TweetIngester"),
-    resolvers in ThisBuild ++= Seq(
-      "Artima Maven Repository" at "https://repo.artima.com/releases",
-      Resolver.bintrayRepo("ovotech", "maven") // for kafka-serialization
-    ),
+    resolvers in ThisBuild += "Artima Maven Repository" at "https://repo.artima.com/releases",
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-circe" % Http4sVersion,
       "org.http4s" %% "http4s-dsl" % Http4sVersion,
@@ -33,9 +29,7 @@ lazy val root = (project in file("."))
       "io.circe" %% "circe-generic" % CirceVersion,
       "io.circe" %% "circe-fs2" % CirceFs2Version,
       "com.github.pureconfig" %% "pureconfig" % PureConfigVersion,
-      "com.ovoenergy" %% "fs2-kafka" % Fs2KafkaVersion,
-      "com.ovoenergy" %% "kafka-serialization-core" % KafkaSerializationVersion,
-      "com.ovoenergy" %% "kafka-serialization-circe" % KafkaSerializationVersion
+      "com.ovoenergy" %% "fs2-kafka" % Fs2KafkaVersion
     ),
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % ScalaTestVersion,
