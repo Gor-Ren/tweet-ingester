@@ -37,7 +37,9 @@ lazy val root = (project in file("."))
       "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
       "io.circe" %% "circe-generic" % CirceVersion,
       "io.circe" %% "circe-fs2" % CirceFs2Version,
+      "io.circe" %% "circe-refined" % CirceFs2Version,
       "eu.timepit" %% "refined" % RefinedVersion,
+      "eu.timepit" %% "refined-scalacheck" % RefinedVersion,
       "io.estatico" %% "newtype" % NewtypeVersion,
       "com.github.pureconfig" %% "pureconfig" % PureConfigVersion,
       "com.github.fd4s" %% "fs2-kafka" % Fs2KafkaVersion
