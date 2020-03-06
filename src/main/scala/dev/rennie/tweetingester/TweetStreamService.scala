@@ -1,24 +1,29 @@
 package dev.rennie.tweetingester
 
-import cats.effect.{ConcurrentEffect, ContextShift}
-import io.circe.Json
-import org.http4s.{Method, Request, Response, Uri}
-import org.http4s.client.{oauth1, Client}
+import cats.Applicative
+import cats.effect.{ConcurrentEffect, ContextShift, Sync}
+import dev.rennie.tweetingester.Tweet.tweetDecoder
 import fs2.Stream
-import jawnfs2._
-import org.typelevel.jawn.RawFacade
 import io.circe.jawn.CirceSupportParser
-import Tweet.tweetDecoder
-import io.circe.fs2.decoder
+import io.circe.{Decoder, Json}
+import jawnfs2._
+import org.http4s.client.{oauth1, Client}
+import org.http4s.{Method, Request, Response}
+import org.typelevel.jawn.Facade
 
-import scala.concurrent.ExecutionContext
-
-class TweetStreamService[F[_]](
+/**
+  * Connects to the Twitter API and produces a stream of parsed [[Tweet]]s.
+  *
+  * @param config the Twitter API details used to connect
+  * @param clientBuilder a builder producing a singleton stream of the HTTP
+  *                      client to be used to communicate with Twitter
+  */
+class TweetStreamService[F[_]: ConcurrentEffect: ContextShift: Applicative](
     config: TwitterConfig,
     clientBuilder: StreamingClientBuilder[F]
-)(implicit ec: ExecutionContext, F: ConcurrentEffect[F], cs: ContextShift[F]) {
+) {
 
-  implicit val circeFacade: RawFacade[Json] = CirceSupportParser.facade
+  implicit val circeFacade: Facade[Json] = CirceSupportParser.facade
 
   /** Connects to the Twitter endpoint and returns stream of parsed [[Tweet]]s.
     *
@@ -27,16 +32,17 @@ class TweetStreamService[F[_]](
   def stream(): Stream[F, Tweet] = {
     val request = Request[F](Method.GET, config.endpointUri)
     val response = createTwitterStream(request)(config.credentials)
-    for {
-      r <- response
-      tweet <- r.body.chunks
-        .through(parseJsonStream)
-        .through(decoder[F, Tweet])
-        .handleErrorWith(t => {
-          println(s"Error: $t") // TODO: log errors, make pure
-          Stream.empty
-        })
-    } yield tweet
+    response
+      .flatMap(_.body.chunks)
+      .through(parseJsonStream)
+      .map(Decoder[Tweet].decodeJson)
+      .flatMap(
+        _.fold(failure =>
+                 Stream.eval(Sync[F].delay { // TODO: logging
+                   println(s"Tweet decode error: $failure")
+                 }) >> Stream.empty,
+               tweet => Stream.emit(tweet))
+      )
   }
 
   /** Executes the input request and returns the streamed response.
