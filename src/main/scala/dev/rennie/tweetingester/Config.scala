@@ -3,9 +3,8 @@ package dev.rennie.tweetingester
 import org.http4s.Uri
 import org.http4s.client.oauth1
 
-case class Config(twitter: TwitterConfig)
+case class Config(twitter: TwitterConfig, kafka: KafkaConfig)
 
-// TODO: awaiting pureconfig-http4s update for http4s.Uri support for endpoint
 case class TwitterConfig(endpoint: String, credentials: TwitterApiCredentials) {
   def endpointUri: Uri = Uri.unsafeFromString(endpoint)
 }
@@ -20,3 +19,5 @@ case class TwitterApiCredentials(consumerKey: String,
   lazy val oauthToken: oauth1.Token =
     oauth1.Token(accessToken, accessSecret)
 }
+
+case class KafkaConfig(url: String, topicName: String)

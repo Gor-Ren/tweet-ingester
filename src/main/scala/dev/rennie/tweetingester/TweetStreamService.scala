@@ -1,15 +1,15 @@
 package dev.rennie.tweetingester
 
-import cats.effect.{ConcurrentEffect, ContextShift, IO}
-import io.circe.Json
-import org.http4s.{Method, Request, Response, Uri}
-import org.http4s.client.{oauth1, Client}
+import cats.Applicative
+import cats.effect.{ConcurrentEffect, ContextShift, Sync}
+import dev.rennie.tweetingester.Tweet.tweetDecoder
 import fs2.Stream
-import jawnfs2._
-import org.typelevel.jawn.RawFacade
+import io.circe.{Decoder, Json}
 import io.circe.jawn.CirceSupportParser
-import Tweet.tweetDecoder
-import io.circe.fs2.decoder
+import jawnfs2._
+import org.http4s.client.{oauth1, Client}
+import org.http4s.{Method, Request, Response}
+import org.typelevel.jawn.RawFacade
 
 import scala.concurrent.ExecutionContext
 
@@ -20,10 +20,10 @@ import scala.concurrent.ExecutionContext
   * @param clientBuilder a builder producing a singleton stream of the HTTP
   *                      client to be used to communicate with Twitter
   */
-class TweetStreamService[F[_]](
+class TweetStreamService[F[_]: ConcurrentEffect: ContextShift: Applicative](
     config: TwitterConfig,
     clientBuilder: StreamingClientBuilder[F]
-)(implicit ec: ExecutionContext, ce: ConcurrentEffect[F], cs: ContextShift[F]) {
+)(implicit ec: ExecutionContext) {
 
   implicit val circeFacade: RawFacade[Json] = CirceSupportParser.facade
 
@@ -34,16 +34,19 @@ class TweetStreamService[F[_]](
   def stream(): Stream[F, Tweet] = {
     val request = Request[F](Method.GET, config.endpointUri)
     val response = createTwitterStream(request)(config.credentials)
-    for {
-      r <- response
-      tweet <- r.body.chunks
-        .through(parseJsonStream)
-        .through(decoder[F, Tweet])
-        .handleErrorWith(t => {
-          Stream.eval(IO(println(s"Error: $t"))) // TODO: log errors
-          Stream.empty
-        })
-    } yield tweet
+    response
+      .flatMap(_.body.chunks)
+      .through(parseJsonStream)
+      .map(Decoder[Tweet].decodeJson)
+      .flatMap(
+        _.fold(failure =>
+                 Stream.empty.covary[F].evalTap { _ =>
+                   Sync[F].delay { // TODO: logging
+                     println(s"Tweet decode error: $failure")
+                   }
+                 },
+               tweet => Stream.emit(tweet))
+      )
   }
 
   /** Executes the input request and returns the streamed response.
