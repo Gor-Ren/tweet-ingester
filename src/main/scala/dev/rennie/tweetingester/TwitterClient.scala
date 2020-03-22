@@ -1,15 +1,19 @@
 package dev.rennie.tweetingester
 
-import cats.Applicative
-import cats.effect.{ConcurrentEffect, ContextShift, Sync}
+import cats.syntax.monadError._
+import cats.effect.{ConcurrentEffect, ContextShift}
 import dev.rennie.tweetingester.Tweet.tweetDecoder
+import dev.rennie.tweetingester.TwitterClient.ConnectionFailure
 import fs2.Stream
+import io.chrisdavenport.log4cats.Logger
 import io.circe.jawn.CirceSupportParser
 import io.circe.{Decoder, Json}
 import jawnfs2._
 import org.http4s.client.{oauth1, Client}
 import org.http4s.{Method, Request, Response}
 import org.typelevel.jawn.Facade
+
+import scala.util.control.NoStackTrace
 
 /**
   * Connects to the Twitter API and produces a stream of parsed [[Tweet]]s.
@@ -18,7 +22,7 @@ import org.typelevel.jawn.Facade
   * @param clientBuilder a builder producing a singleton stream of the HTTP
   *                      client to be used to communicate with Twitter
   */
-class TweetStreamService[F[_]: ConcurrentEffect: ContextShift: Applicative](
+class TwitterClient[F[_]: ConcurrentEffect: ContextShift: Logger](
     config: TwitterConfig,
     clientBuilder: StreamingClientBuilder[F]
 ) {
@@ -29,18 +33,23 @@ class TweetStreamService[F[_]: ConcurrentEffect: ContextShift: Applicative](
     *
     * Elements which cannot be parsed to a [[Tweet]] are ignored.
     */
-  def stream(): Stream[F, Tweet] = {
+  def stream: Stream[F, Tweet] = {
     val request = Request[F](Method.GET, config.endpointUri)
     val response = createTwitterStream(request)(config.credentials)
     response
+      .ensure(
+        ConnectionFailure("Did not receive success code from Twitter")
+      )(
+        r => r.status.isSuccess
+      )
       .flatMap(_.body.chunks)
       .through(parseJsonStream)
       .map(Decoder[Tweet].decodeJson)
       .flatMap(
         _.fold(failure =>
-                 Stream.eval(Sync[F].delay { // TODO: logging
-                   println(s"Tweet decode error: $failure")
-                 }) >> Stream.empty,
+                 Stream.eval(
+                   Logger[F].warn(s"Tweet decode failure: ${failure.message}")
+                 ) >> Stream.empty,
                tweet => Stream.emit(tweet))
       )
   }
@@ -56,6 +65,9 @@ class TweetStreamService[F[_]: ConcurrentEffect: ContextShift: Applicative](
   )(creds: TwitterApiCredentials): Stream[F, Response[F]] =
     for {
       client: Client[F] <- clientBuilder.streamClient
+      _ <- Stream.eval(
+        Logger[F].info(s"Connecting to stream tweets from ${req.uri}")
+      )
       signedRequest: Request[F] <- Stream.eval(sign(req)(creds))
       // TODO: response error handling / retry logic
       response: Response[F] <- client.stream(signedRequest)
@@ -77,4 +89,8 @@ class TweetStreamService[F[_]: ConcurrentEffect: ContextShift: Applicative](
                        verifier = None,
                        token = Some(creds.oauthToken))
   }
+}
+
+object TwitterClient {
+  final case class ConnectionFailure(message: String) extends NoStackTrace
 }

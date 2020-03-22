@@ -4,7 +4,7 @@ import cats.effect.Sync
 import dev.rennie.tweetingester.Tweet
 import fs2.Stream
 import org.http4s.client.Client
-import org.http4s.{EntityEncoder, HttpApp, Request, Response}
+import org.http4s.{EntityEncoder, HttpApp, Request, Response, Status}
 
 /** Creates HTTP clients which mock the Twitter API's tweet stream. */
 class MockTwitterClient[F[_]](val enc: EntityEncoder[F, Stream[F, Seq[Tweet]]])(
@@ -23,6 +23,14 @@ class MockTwitterClient[F[_]](val enc: EntityEncoder[F, Stream[F, Seq[Tweet]]])(
       Client.fromHttpApp[F](HttpApp(route))
     )
   }
+
+  def returnEmptyWithStatus(status: Status): Stream[F, Client[F]] = {
+    Stream.emit(
+      Client.fromHttpApp[F](HttpApp { _ =>
+        F.pure(Response[F](status = status))
+      })
+    )
+  }
 }
 
 object MockTwitterClient {
@@ -36,7 +44,7 @@ object MockTwitterClient {
     * @return a client which mocks the Twitter API behaviour
     */
   def apply[F[_]](
-      emitKeepAlive: Boolean
+      emitKeepAlive: Boolean = false
   )(implicit F: Sync[F]): MockTwitterClient[F] = {
     val enc =
       if (emitKeepAlive)

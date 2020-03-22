@@ -1,6 +1,7 @@
 package dev.rennie.tweetingester
 
-import cats.effect.ExitCode
+import cats.effect.{ExitCode, IO}
+import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 import org.scalatest.BeforeAndAfterAll
 
 class MainSpec extends BaseTestSpec with BeforeAndAfterAll {
@@ -12,7 +13,8 @@ class MainSpec extends BaseTestSpec with BeforeAndAfterAll {
 
   describe("TweetIngester#loadConfig") {
     it("should load the expected config values") {
-      val config: Config = Main.loadConfig().unsafeRunSync()
+      implicit val logger = Slf4jLogger.unsafeCreate[IO]
+      val config: Config = Main.loadConfig.unsafeRunSync()
       config.twitter.endpoint shouldBe "/test/"
       config.twitter.credentials.consumerKey shouldBe "test-consumer-key"
       config.twitter.credentials.consumerSecret shouldBe "test-consumer-secret"

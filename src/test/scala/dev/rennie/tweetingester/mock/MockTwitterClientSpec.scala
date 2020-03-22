@@ -2,13 +2,18 @@ package dev.rennie.tweetingester.mock
 
 import cats.effect.IO
 import dev.rennie.tweetingester.{BaseTestSpec, Tweet}
-import org.http4s.Request
+import fs2.Stream
 import io.circe.syntax._
+import org.http4s.{Request, Status}
 import org.scalacheck.Arbitrary
+import io.estatico.newtype.macros._
+import org.http4s.client.Client
 
 /** Tests that the mock client provides the expected behaviour. */
 final class MockTwitterClientSpec extends BaseTestSpec {
+  import MockTwitterClientSpec._
   implicit val tweetArbitrary: Arbitrary[Tweet] = Arbitrary(tweetGen)
+  implicit val statusArb: Arbitrary[Status] = Arbitrary(statusGen)
 
   val client: MockTwitterClient[IO] =
     MockTwitterClient[IO](emitKeepAlive = false)
@@ -27,16 +32,15 @@ final class MockTwitterClientSpec extends BaseTestSpec {
 
     it("should respond with tweets as JSON separated by CRLF") {
       forAll { tweets: Seq[Tweet] =>
-        val c =
-          client.returnsOkWith(tweets).compile.toList.unsafeRunSync().head
-        val body = c
-          .fetch(Request[IO]())(resp => resp.bodyAsText.compile.string)
-          .unsafeRunSync()
+        val (_, body) = doRequest(
+          client.returnsOkWith(tweets),
+          Request[IO]()
+        )
 
         val expected =
           tweets.foldLeft("")((res, el) => res ++ el.asJson.spaces4 ++ "\r\n")
 
-        body should equal(expected)
+        body.value should equal(expected)
       }
     }
 
@@ -48,23 +52,55 @@ final class MockTwitterClientSpec extends BaseTestSpec {
         MockTwitterClient[IO](emitKeepAlive = true)
 
       forAll { tweets: Seq[Tweet] =>
-        val c = keepAliveClient
-          .returnsOkWith(tweets)
-          .compile
-          .toList
-          .unsafeRunSync()
-          .head
-        val body = c
-          .fetch(Request[IO]())(resp => resp.bodyAsText.compile.string)
-          .unsafeRunSync()
+        val (_, body) = doRequest(
+          keepAliveClient.returnsOkWith(tweets),
+          Request[IO]()
+        )
 
         val expected =
           tweets.foldLeft("")(
             (res, el) => res ++ el.asJson.spaces4 ++ "\r\n" ++ "\n"
           )
 
-        body should equal(expected)
+        body.value should equal(expected)
       }
     }
   }
+
+  describe("MockTwitterClient#returnEmptyWithStatus") {
+    it("should return a response with the input status and an empty body") {
+      forAll { status: Status =>
+        val (actualStatus, body) = doRequest(
+          client.returnEmptyWithStatus(status),
+          Request[IO]()
+        )
+
+        body.value shouldBe empty
+        actualStatus shouldBe status
+      }
+    }
+  }
+}
+
+object MockTwitterClientSpec {
+  @newtype case class Body(value: String)
+
+  def doRequest(
+      client: Stream[IO, Client[IO]],
+      request: Request[IO]
+  ): (Status, Body) =
+    client
+      .evalMap(
+        _.fetch(request)(
+          resp =>
+            resp.bodyAsText.compile.string.map { str =>
+              (resp.status, Body(str))
+            }
+        )
+      )
+      .compile
+      .toList
+      .unsafeRunSync()
+      .headOption
+      .get
 }

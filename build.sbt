@@ -12,6 +12,8 @@ val Fs2KafkaVersion = "1.0.0"
 val RefinedVersion = "0.9.12"
 val NewtypeVersion = "0.4.3"
 val PureConfigVersion = "0.12.0"
+val Log4CatsVersion = "1.0.1"
+val LogbackVersion = "1.2.3"
 val ScalaTestVersion = "3.0.8"
 val ScalaCheckVersion = "1.14.0"
 val ScalaMockVersion = "4.4.0"
@@ -38,11 +40,13 @@ lazy val root = (project in file("."))
       "io.circe" %% "circe-generic" % CirceVersion,
       "io.circe" %% "circe-fs2" % CirceFs2Version,
       "io.circe" %% "circe-refined" % CirceFs2Version,
+      "com.github.fd4s" %% "fs2-kafka" % Fs2KafkaVersion,
       "eu.timepit" %% "refined" % RefinedVersion,
       "eu.timepit" %% "refined-scalacheck" % RefinedVersion,
       "io.estatico" %% "newtype" % NewtypeVersion,
       "com.github.pureconfig" %% "pureconfig" % PureConfigVersion,
-      "com.github.fd4s" %% "fs2-kafka" % Fs2KafkaVersion
+      "io.chrisdavenport" %% "log4cats-slf4j" % Log4CatsVersion,
+      "ch.qos.logback" % "logback-classic" % LogbackVersion
     ),
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % ScalaTestVersion,

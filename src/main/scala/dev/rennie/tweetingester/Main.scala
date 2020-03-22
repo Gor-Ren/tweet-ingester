@@ -3,7 +3,11 @@ package dev.rennie.tweetingester
 import java.nio.charset.StandardCharsets
 
 import cats.effect.{ExitCode, IO, IOApp}
+import cats.syntax.flatMap._
+import cats.syntax.show._
 import fs2.kafka.{ProducerSettings, Serializer}
+import io.chrisdavenport.log4cats.Logger
+import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 import io.circe.syntax._
 import javax.naming.ConfigurationException
 import org.http4s.client.blaze.BlazeClientBuilder
@@ -22,17 +26,19 @@ object Main extends IOApp {
 
   override def run(args: List[String]): IO[ExitCode] = {
     for {
-      config <- loadConfig()
-      _ <- startApp(config)
+      logger <- Slf4jLogger.create[IO]
+      config <- loadConfig(logger)
+      _ <- logger.info(s"Config loaded:\n${config.show}")
+      _ <- startApp(config)(logger)
     } yield ExitCode.Success
   }
 
-  def startApp(config: Config): IO[Unit] = {
+  def startApp(config: Config)(implicit logger: Logger[IO]): IO[Unit] = {
 //    val tweetSource: Stream[IO, Tweet] =
-    new TweetStreamService[IO](
+    new TwitterClient[IO](
       config.twitter,
       BlazeClientBuilder[IO](ec)
-    ).stream()
+    ).stream
 //
 //    val kafkaProducerSettings =
     ProducerSettings(
@@ -41,19 +47,18 @@ object Main extends IOApp {
     ).withBootstrapServers(config.kafka.url)
 
 //    tweetSource.compile.drain
-    IO.unit
+    logger.info("Starting app...") >> IO.unit
   }
 
   /** Loads the application config in an effect.
     *
     * Config resolution will search in the `/resources` directory.
     */
-  def loadConfig(): IO[Config] = {
-    IO.fromEither[Config](
+  def loadConfig(implicit log: Logger[IO]): IO[Config] =
+    log.info("Loading config...") >> IO.fromEither[Config](
       ConfigSource.default
         .load[Config]
         .left
         .map(f => new ConfigurationException(f.toString))
     )
-  }
 }
