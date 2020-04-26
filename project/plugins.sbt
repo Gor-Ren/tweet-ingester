@@ -1,7 +1,4 @@
-resolvers in ThisBuild += "Artima Maven Repository" at "https://repo.artima.com/releases"
-
-addSbtPlugin("com.artima.supersafe" % "sbtplugin" % "1.1.8")
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.0.4")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.3.2")
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.6.0")
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.4.1")
 addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.1.11")

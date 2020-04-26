@@ -1,19 +1,18 @@
-package dev.rennie.tweetingester
-
-import dev.rennie.tweetingester.Tweet.{TweetId, TweetMessage}
+package dev.rennie.tweetingester.test
+import dev.rennie.tweetingester.domain.Tweet
+import dev.rennie.tweetingester.domain.Tweet.{TweetId, TweetMessage}
+import eu.timepit.refined.api.Refined
 import eu.timepit.refined.refineV
 import eu.timepit.refined.string.ValidLong
 import org.http4s.Status
 import org.scalacheck.Gen
-import org.scalatest.{FunSpec, Matchers}
-import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-class BaseTestSpec extends FunSpec with Matchers with ScalaCheckPropertyChecks {
+object TweetGenerator {
   val tweetMaxLength = 140
 
   val idGen: Gen[TweetId] = for {
     long <- Gen.choose(1000L, Long.MaxValue)
-    id = refineV[ValidLong](long.toString).getOrElse(throw new RuntimeException)
+    id = Refined.unsafeApply[String, ValidLong](long.toString)
   } yield TweetId(id)
 
   val tweetGen: Gen[Tweet] = for {

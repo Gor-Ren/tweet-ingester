@@ -1,23 +1,16 @@
-package dev.rennie.tweetingester.mock
+package dev.rennie.tweetingester.client
 
 import java.nio.charset.StandardCharsets
 
 import cats.Applicative
-import dev.rennie.tweetingester.Tweet
+import dev.rennie.tweetingester.domain.Tweet
 import fs2.Stream
-import io.circe.{Encoder, Json, Printer}
 import io.circe.syntax._
+import io.circe.{Encoder, Json, Printer}
 import org.http4s
 import org.http4s.circe.CirceInstances
 import org.http4s.headers.{`Content-Type`, `Transfer-Encoding`}
-import org.http4s.{
-  Entity,
-  EntityBody,
-  EntityEncoder,
-  Headers,
-  MediaType,
-  TransferCoding
-}
+import org.http4s.{Entity, EntityBody, EntityEncoder, Headers, MediaType, TransferCoding}
 
 /** Encodes sequences of objects as CRLF-delimited JSON value streams.
   *
@@ -66,16 +59,11 @@ class CrlfDelimitedJsonEncoder[F[_]: Applicative, O](keepAlive: Boolean)(
 
 object CrlfDelimitedJsonEncoderInstances {
 
-  /** Encodes [[Tweet]]s, delimiting each element with `\r\n`. */
   implicit def tweetDelimitedJsonEncoder[F[_]: Applicative](
       implicit jsonEncoder: Encoder[Tweet]
   ): EntityEncoder[F, Stream[F, Seq[Tweet]]] =
     new CrlfDelimitedJsonEncoder[F, Tweet](false)
 
-  /** Encodes [[Tweet]]s, delimiting each element with `\r\n` and `\n`.
-    *
-    * The `\n` simulates an output used by Twitter to keep a connection alive.
-    */
   implicit def tweetDelimitedKeepAliveJsonEncoder[F[_]: Applicative](
       implicit jsonEncoder: Encoder[Tweet]
   ): EntityEncoder[F, Stream[F, Seq[Tweet]]] =
